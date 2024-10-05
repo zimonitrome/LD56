@@ -3,8 +3,9 @@ type SpriteData = Record<SpriteState, string[]>;
 
 export class Sprite {
   private sprites: SpriteData = {};
-  private currentFrame = 0;
-  private interval: number | undefined;
+  private currentFrames: Record<SpriteState, number> = {};
+  private lastUpdateTime: number = 0;
+  private animationId: number | null = null;
 
   constructor(private spriteUrl: string, private frameRate: number = 500) {
     this.loadSprites();
@@ -15,11 +16,11 @@ export class Sprite {
       const response = await fetch(this.spriteUrl);
       const content = await response.text();
       this.sprites = this.parseSprites(content);
+      this.initializeCurrentFrames();
       this.startAnimation();
     } catch (error) {
       console.error('Failed to load sprites:', error);
     }
-    console.log("done loading sprites");
   }
 
   private parseSprites(content: string): SpriteData {
@@ -61,34 +62,59 @@ export class Sprite {
     return sprites;
   }
 
+  private initializeCurrentFrames() {
+    Object.keys(this.sprites).forEach(state => {
+      this.currentFrames[state] = 0;
+    });
+  }
+
   private startAnimation() {
-    this.interval = setInterval(() => {
-      this.currentFrame = (this.currentFrame + 1) % this.getMaxFrames();
-    }, this.frameRate);
+    this.lastUpdateTime = performance.now();
+    this.animationId = requestAnimationFrame(this.animate);
   }
 
-  private getMaxFrames(): number {
-    return Math.max(...Object.values(this.sprites).map(frames => frames.length));
+  private animate = (currentTime: number) => {
+    if (currentTime - this.lastUpdateTime >= this.frameRate) {
+      Object.keys(this.sprites).forEach(state => {
+        const frames = this.sprites[state];
+        if (frames.length > 1) {
+          this.currentFrames[state] = (this.currentFrames[state] + 1) % frames.length;
+        }
+      });
+      this.lastUpdateTime = currentTime;
+    }
+    this.animationId = requestAnimationFrame(this.animate);
   }
 
-  render(state: SpriteState) {
+  private stopAnimation() {
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  render(state: SpriteState): string {
     const frames = this.sprites[state] || [];
-    const frame = frames[this.currentFrame] || '';
-    
-    return (
-      <pre style={{
-        "font-family": "monospace",
-        "white-space": "pre",
-        "text-align": "left"
-      }}>
-        {frame || ":)"}
-      </pre>
-    );
+    if (frames.length === 0) {
+      return '';
+    }
+    const frameIndex = this.currentFrames[state] || 0;
+    const frame = frames[frameIndex];
+    return frame;
+  }
+
+  setFrameRate(newFrameRate: number) {
+    if (newFrameRate <= 0) {
+      throw new Error("Frame rate must be a positive number");
+    }
+    this.frameRate = newFrameRate;
+  }
+
+  getFrameRate(): number {
+    return this.frameRate;
   }
 
   cleanup() {
-    if (this.interval) {
-      clearInterval(this.interval);
-    }
+    this.stopAnimation();
   }
 }

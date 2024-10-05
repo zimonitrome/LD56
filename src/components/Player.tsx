@@ -1,5 +1,6 @@
 import { Sprite } from './Sprite';
 import asciiSprite from "../sprites/Player.txt";
+import { DEBUG, SCREENSHAKE } from '../Game';
 
 export class Player {
   x: number;
@@ -13,6 +14,13 @@ export class Player {
   acceleration: number;
   friction: number;
   private sprite: Sprite | null = null;
+  state: string = 'idle';
+  keys: Set<string> = new Set();
+  ref: HTMLPreElement | undefined;
+  divRef: HTMLDivElement | undefined
+  lastDirection: number = 1;
+  graceCooldown: number = 0;
+  world: HTMLElement | null = null;
 
   constructor(x: number, y: number, size: number, color: string, speed: number) {
     this.x = x;
@@ -23,22 +31,47 @@ export class Player {
     this.maxVelocity = speed;
     this.acceleration = speed / 5;
     this.friction = 0.9;
-    
+
     this.sprite = new Sprite(asciiSprite);
+
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.handleKeyUp = this.handleKeyUp.bind(this);
+
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
   }
 
-  move(dx: number, dy: number) {
+  handleKeyDown(e: KeyboardEvent) {
+    this.keys.add(e.key.toLowerCase());
+  }
+
+  handleKeyUp(e: KeyboardEvent) {
+    this.keys.delete(e.key.toLowerCase());
+  }
+
+  update() {
+    let dx = 0;
+    let dy = 0;
+
+    if (this.keys.has('w')) dy -= 1;
+    if (this.keys.has('s')) dy += 1;
+    if (this.keys.has('a')) dx -= 1;
+    if (this.keys.has('d')) dx += 1;
+
+    const anyInput: number = dx !== 0 || dy !== 0 ? 1 : 0;
+
     // Apply acceleration based on input
     this.velocityX += dx * this.acceleration;
     this.velocityY += dy * this.acceleration;
 
     // Limit velocity to max speed
-    const currentSpeed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+    let currentSpeed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
     if (currentSpeed > this.maxVelocity) {
       const ratio = this.maxVelocity / currentSpeed;
       this.velocityX *= ratio;
       this.velocityY *= ratio;
     }
+    currentSpeed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
 
     // Apply friction
     this.velocityX *= this.friction;
@@ -48,50 +81,95 @@ export class Player {
     this.x += this.velocityX;
     this.y += this.velocityY;
 
-    if (this.totalVelocity() < 0.01) {
+    if (currentSpeed < 0.01) {
       this.velocityX = 0;
       this.velocityY = 0;
     }
+
+    // Update state
+    if (this.graceCooldown > 0) {
+      this.graceCooldown -= 1;
+      this.state = 'damage';
+      let oscillation = this.oscillatingDecay(30-this.graceCooldown);
+      let oscillation2 = this.oscillatingDecay(0.8*(30-this.graceCooldown));
+      this.ref!.style.rotate = `${2*oscillation}deg`;
+      this.world = document.getElementById('world');
+      if (SCREENSHAKE) {
+        this.world!.style.left = `calc(50% + ${0.5*oscillation}px)`;
+        this.world!.style.top = `calc(50% + ${0.2*oscillation2}px)`;
+      }
+    }
+    else {
+      this.ref!.style.rotate = '0deg';
+      if (anyInput)
+        this.state = 'walking';
+      else
+        this.state = 'idle';
+    }
+
+    const newFrameRate = Math.max(Math.floor(5 * Math.exp(currentSpeed / 14)), 1);
+    // console.log("newFrameRate", newFrameRate);
+    this.sprite?.setFrameRate(newFrameRate);
+
+    this.lastDirection = dx === 0 ? this.lastDirection : dx;
+    this.ref!.style.transform = `scaleX(${this.lastDirection})`;
+
+    this.ref!.innerHTML = this.sprite!.render(this.state);
+
+    const selfRect = this.divRef!.getBoundingClientRect();
+    this.divRef!.style.transform = `translate(${this.x - selfRect.width / 2}px, ${this.y - selfRect.height / 2}px)`;
+
+
+    const playerDiv = document.getElementById('player');
+    if (!playerDiv) return true; // If world div doesn't exist, consider bullet out of bounds
+    const playerRect = playerDiv.getBoundingClientRect();
+    const playerCenterX = playerRect.left + playerRect.width / 2;
+    const playerCenterY = playerRect.top + playerRect.height / 2;
+
+    const worldDiv = document.getElementById('world');
+    if (!worldDiv) return true; // If world div doesn't exist, consider bullet out of bounds
+    const worldRect = worldDiv.getBoundingClientRect();
+    const worldCenterX = worldRect.left + worldRect.width / 2;
+    const worldCenterY = worldRect.top + worldRect.height / 2;
   }
 
-  totalVelocity() {
-    return Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+  takeDamage() {
+    this.state = 'damage';
+    this.graceCooldown = 30;
   }
+
+  oscillatingDecay = (x: number): number => (30 - x) * Math.sin(2 * Math.PI * 0.1 * x) * Math.exp(-0.05 * x);
 
   render() {
-    const state = this.totalVelocity() > 0.1 ? 'walking' : 'idle';
-    
-    console.log("rendering...");
-
-    if (this.sprite) {
-      return (
-        <div style={{
+    return (
+      <div
+        ref={this.divRef}
+        style={{
           position: 'absolute',
-          left: '50%',
-          top: '50%',
+          // left: '50%',
+          // top: '50%',
           transform: 'translate(-50%, -50%)',
-        }}>
-          {this.sprite.render(state)}
-        </div>
-      );
-    } else {
-      return (
-        <div
+          border: DEBUG ? '1px solid blue' : 'none',
+        }}
+        id="player"
+      >
+        <pre
+          ref={this.ref}
           style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: `${this.size}rem`,
-            height: `${this.size}rem`,
-            background: this.color,
-            transform: 'translate(-50%, -50%)',
-          }}
-        />
-      );
-    }
+            margin: 0,
+            "font-family": "monospace",
+            "white-space": "pre",
+            "text-align": "left"
+          }}>
+
+        </pre>
+      </div>
+    );
   }
 
   cleanup() {
     this.sprite?.cleanup();
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
   }
 }
