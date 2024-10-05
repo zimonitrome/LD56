@@ -25,8 +25,6 @@ export class Player {
     this.friction = 0.9;
     
     this.sprite = new Sprite(asciiSprite);
-    console.log(this.sprite);
-    this.sprite.loadSprites();
   }
 
   move(dx: number, dy: number) {
@@ -49,6 +47,11 @@ export class Player {
     // Update position
     this.x += this.velocityX;
     this.y += this.velocityY;
+
+    if (this.totalVelocity() < 0.01) {
+      this.velocityX = 0;
+      this.velocityY = 0;
+    }
   }
 
   totalVelocity() {
@@ -58,6 +61,8 @@ export class Player {
   render() {
     const state = this.totalVelocity() > 0.1 ? 'walking' : 'idle';
     
+    console.log("rendering...");
+
     if (this.sprite) {
       return (
         <div style={{

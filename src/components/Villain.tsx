@@ -51,3 +51,39 @@
 // };
 
 // export default Villain;
+
+
+import { Component } from 'solid-js';
+import { Sprite } from '../components/Sprite';
+import { Player } from './Player';
+
+export class Enemy {
+  x: number;
+  y: number;
+  speed: number = 0.3;
+  private sprite: Sprite;
+
+  constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+    this.sprite = new Sprite('/path/to/enemy/sprite.txt');
+  }
+
+  update(player: Player) {
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance > 0) {
+      this.x += (dx / distance) * this.speed;
+      this.y += (dy / distance) * this.speed;
+    }
+  }
+
+  render: Component = () => {
+    return (
+      <div style={{ position: 'absolute', left: `${this.x}rem`, top: `${this.y}rem` }}>
+        {this.sprite.render('idle')}
+      </div>
+    );
+  };
+}

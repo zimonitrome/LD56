@@ -6,18 +6,20 @@ export class Sprite {
   private currentFrame = 0;
   private interval: number | undefined;
 
-  constructor(private spriteUrl: string, private frameRate: number = 500) {}
+  constructor(private spriteUrl: string, private frameRate: number = 500) {
+    this.loadSprites();
+  }
 
   async loadSprites() {
     try {
       const response = await fetch(this.spriteUrl);
       const content = await response.text();
-      console.log(content);
       this.sprites = this.parseSprites(content);
       this.startAnimation();
     } catch (error) {
       console.error('Failed to load sprites:', error);
     }
+    console.log("done loading sprites");
   }
 
   private parseSprites(content: string): SpriteData {
@@ -72,10 +74,6 @@ export class Sprite {
   render(state: SpriteState) {
     const frames = this.sprites[state] || [];
     const frame = frames[this.currentFrame] || '';
-
-    console.log(state);
-    console.log(this.sprites);
-    console.log(frames);
     
     return (
       <pre style={{
@@ -83,7 +81,7 @@ export class Sprite {
         "white-space": "pre",
         "text-align": "left"
       }}>
-        {frame}
+        {frame || ":)"}
       </pre>
     );
   }
