@@ -25,8 +25,8 @@ export class AudioManager {
 
   public loadAllSounds(): void {
     this.loadBackgroundMusic(backgroundMusic); // 70% base volume for background music
-    this.loadSoundEffect('playerHit', playerHit, 1); // 100% base volume for player hit
-    this.loadSoundEffect('enemyShoot', enemyShoot, 0.8); // 80% base volume for enemy shoot
+    this.loadSoundEffect('playerHit', playerHit, 0.5); // 100% base volume for player hit
+    this.loadSoundEffect('enemyShoot', enemyShoot, 0.5); // 80% base volume for enemy shoot
   }
 
   public loadBackgroundMusic(src: string, baseVolume: number = 1): void {

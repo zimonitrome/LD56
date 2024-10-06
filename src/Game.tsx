@@ -6,14 +6,15 @@ import { Enemy } from './components/Villain';
 import heartSprite from "../src/sprites/heart.md"
 import { Sprite } from './components/Sprite';
 import { createBox } from './utils/create_ui_box';
-import HighScoreList, { fetchScores } from './components/HighscoreList';
+import HighScoreList, { fetchScores, setScoresLoading } from './components/HighscoreList';
 import './Game.css';
 import { audioManager } from './utils/AudioManager';
-import backgroundMusic from './audio/background-music.mp3';
 import AudioControls from './components/audioControl';
+import { M } from 'vite/dist/node/types.d-aGj9QkWt';
 
 export const DEBUG = false;
 export const SCREENSHAKE = true;
+export const MUTE = true;
 
 const WorldTile = (props: { x: number; y: number; size: number; color: string }) => (
   <div
@@ -45,18 +46,22 @@ const postScore = async () => {
     },
     body: JSON.stringify(data)
   }).then(response => {
-    console.log(response);
     setScoreSubmitted(true);
-    fetchScores();
+    setScoresLoading(true);
+    setTimeout(() => { // LOL hack
+      fetchScores();
+    }, 1000);
+  }).catch(error => {
+    console.error('Error submitting score:', error);
+    setScoreSubmitted(false);
   });
-
 }
 
 const newGameStore = () => ({
   player: new Player(window.innerWidth / 2, window.innerHeight / 2, 1, 'red', 7),
   enemies: [] as Enemy[],
   tiles: [] as { x: number; y: number; size: number }[],
-  health: 3,
+  health: 0,
   active: true,
   score: 0,
 });
@@ -64,8 +69,8 @@ const newGameStore = () => ({
 export const [gameState, setGameState] = createStore(newGameStore());
 const [scoreSubmitted, setScoreSubmitted] = createSignal<boolean | "loading">(false);
 export const [volumes, setVolumes] = createStore({
-  backgroundMusic: 0.7,
-  soundEffects: 0.7,
+  backgroundMusic: MUTE ? 0 : 0.5,
+  soundEffects: MUTE ? 0 : 0.5,
 });
 
 const Game = () => {

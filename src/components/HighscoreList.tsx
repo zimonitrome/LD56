@@ -6,13 +6,13 @@ interface Score {
   timestamp: string;
 }
 const [scores, setScores] = createSignal<Score[]>([]);
-const [loading, setLoading] = createSignal(true);
+export const [scoresLoading, setScoresLoading] = createSignal(true);
 const [error, setError] = createSignal<string | null>(null);
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1y1-C_hKXzPTLQC4fDhsamvQC3xBRIXhR7czqJkNaWX0/gviz/tq?tqx=out:csv&sheet=scores';
 
 export const fetchScores = async () => {
-  setLoading(true);
+  setScoresLoading(true);
   setError(null);
   try {
     const response = await fetch(SHEET_URL);
@@ -26,7 +26,7 @@ export const fetchScores = async () => {
     setError('Failed to load high scores. Please try again later.');
     console.error('Error fetching scores:', err);
   } finally {
-    setLoading(false);
+    setScoresLoading(false);
   }
 };
 
@@ -34,15 +34,16 @@ const parseCSV = (csv: string): Score[] => {
   const lines = csv.split('\n');
   // Assuming the first line is the header, we skip it
   return lines.slice(1).map(line => {
-    const [name, score, timestamp] = line.split(',');
+    // Use regex to split the line, handling quoted values
+    const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+    const [name, score, timestamp] = values.map(v => v.replace(/^"|"$/g, '').trim());
     return {
       name,
       score: parseInt(score, 10),
       timestamp
     };
-  }).filter(score => score.name && !isNaN(score.score))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10); // Get top 10 scores
+  }).filter(r => r.name && !isNaN(r.score))
+    .sort((a, b) => b.score - a.score);
 };
 
 const HighScoreList = () => {
@@ -140,14 +141,14 @@ const HighScoreList = () => {
 
   return (
     <>
-      <h2>High Scores</h2>
+      {/* <h2>High Scores</h2> */}
       <div style={{
         "overflow-y": 'auto',
         width: "calc(100% - 6rem)",
         flex: "1 1 auto",
         "text-align": "center",
       }}>
-        {loading() ? (
+        {scoresLoading() ? (
           <p>Loading high scores...</p>
         ) : error() ? (
           <p style="color: red">{error()}</p>
