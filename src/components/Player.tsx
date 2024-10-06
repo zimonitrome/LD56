@@ -1,6 +1,6 @@
 import { Sprite } from './Sprite';
-import asciiSprite from "../sprites/Player.txt";
-import { DEBUG, SCREENSHAKE } from '../Game';
+import asciiSprite from "../sprites/Player.md";
+import { DEBUG, gameState, SCREENSHAKE, setGameState } from '../Game';
 
 export class Player {
   x: number;
@@ -134,8 +134,10 @@ export class Player {
   }
 
   takeDamage() {
+    if (this.graceCooldown > 0) return;
     this.state = 'damage';
     this.graceCooldown = 30;
+    setGameState('health', gameState.health - 1);
   }
 
   oscillatingDecay = (x: number): number => (30 - x) * Math.sin(2 * Math.PI * 0.1 * x) * Math.exp(-0.05 * x);
@@ -157,9 +159,6 @@ export class Player {
           ref={this.ref}
           style={{
             margin: 0,
-            "font-family": "monospace",
-            "white-space": "pre",
-            "text-align": "left"
           }}>
 
         </pre>

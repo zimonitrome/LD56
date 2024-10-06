@@ -1,6 +1,6 @@
 import { Sprite } from './Sprite';
 import { Player } from './Player';
-import asciiSprite from "../sprites/villain.txt";
+import asciiSprite from "../sprites/villain.md";
 import { Bullet } from './Bullet';
 import { DEBUG } from '../Game';
 
@@ -128,9 +128,6 @@ export class Enemy {
         <pre
           ref={(el) => this.ref = el}
           style={{
-            "font-family": "monospace",
-            "white-space": "pre",
-            "text-align": "left",
             margin: 0,
           }}>
           {":)"}

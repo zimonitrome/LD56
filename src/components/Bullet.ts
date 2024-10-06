@@ -1,6 +1,6 @@
 import { Player } from './Player';
 import { Sprite } from './Sprite';
-import asciiSprite from "../sprites/bullet.txt";
+import asciiSprite from "../sprites/bullet.md";
 import { DEBUG } from '../Game';
 
 export class Bullet {

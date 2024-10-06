@@ -1,65 +1,63 @@
 type SpriteState = string;
 type SpriteData = Record<SpriteState, string[]>;
 
+export function parseSprites(content: string): SpriteData {
+  const lines = content.split('\n');
+  const sprites: SpriteData = {};
+  let currentState: string | null = null;
+  let currentSprite: string[] = [];
+
+  lines.forEach((line) => {
+    if (line.startsWith('## ')) {
+      // New state
+      if (currentState) {
+        sprites[currentState] = sprites[currentState] || [];
+        if (currentSprite.length > 0) {
+          sprites[currentState].push(currentSprite.join('\n'));
+          currentSprite = [];
+        }
+      }
+      currentState = line.slice(3).trim().toLowerCase();
+    } else if (line.trim() === '```') {
+      // Start or end of a sprite
+      if (currentSprite.length > 0) {
+        sprites[currentState!] = sprites[currentState!] || [];
+        sprites[currentState!].push(currentSprite.join('\n'));
+        currentSprite = [];
+      }
+    } else if (currentState && line.trim() !== '') {
+      // Sprite content
+      currentSprite.push(line);
+    }
+  });
+
+  // Add the last sprite if there is one
+  if (currentState && currentSprite.length > 0) {
+    sprites[currentState] = sprites[currentState] || [];
+    sprites[currentState].push(currentSprite.join('\n'));
+  }
+
+  return sprites;
+}
+
 export class Sprite {
   private sprites: SpriteData = {};
   private currentFrames: Record<SpriteState, number> = {};
   private lastUpdateTime: number = 0;
   private animationId: number | null = null;
 
-  constructor(private spriteUrl: string, private frameRate: number = 500) {
+  constructor(private content: string, private frameRate: number = 500) {
     this.loadSprites();
   }
 
   async loadSprites() {
     try {
-      const response = await fetch(this.spriteUrl);
-      const content = await response.text();
-      this.sprites = this.parseSprites(content);
+      this.sprites = parseSprites(this.content);
       this.initializeCurrentFrames();
       this.startAnimation();
     } catch (error) {
       console.error('Failed to load sprites:', error);
     }
-  }
-
-  private parseSprites(content: string): SpriteData {
-    const lines = content.split('\n');
-    const sprites: SpriteData = {};
-    let currentState: string | null = null;
-    let currentSprite: string[] = [];
-  
-    lines.forEach((line) => {
-      if (line.startsWith('## ')) {
-        // New state
-        if (currentState) {
-          sprites[currentState] = sprites[currentState] || [];
-          if (currentSprite.length > 0) {
-            sprites[currentState].push(currentSprite.join('\n'));
-            currentSprite = [];
-          }
-        }
-        currentState = line.slice(3).trim().toLowerCase();
-      } else if (line.trim() === '```') {
-        // Start or end of a sprite
-        if (currentSprite.length > 0) {
-          sprites[currentState!] = sprites[currentState!] || [];
-          sprites[currentState!].push(currentSprite.join('\n'));
-          currentSprite = [];
-        }
-      } else if (currentState && line.trim() !== '') {
-        // Sprite content
-        currentSprite.push(line);
-      }
-    });
-  
-    // Add the last sprite if there is one
-    if (currentState && currentSprite.length > 0) {
-      sprites[currentState] = sprites[currentState] || [];
-      sprites[currentState].push(currentSprite.join('\n'));
-    }
-  
-    return sprites;
   }
 
   private initializeCurrentFrames() {
@@ -96,7 +94,7 @@ export class Sprite {
   render(state: SpriteState): string {
     const frames = this.sprites[state] || [];
     if (frames.length === 0) {
-      return '';
+      return ':/';
     }
     const frameIndex = this.currentFrames[state] || 0;
     const frame = frames[frameIndex];
