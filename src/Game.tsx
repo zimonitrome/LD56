@@ -216,6 +216,7 @@ const Game = () => {
         globalGameTimeSeconds += 1;
         scoreTimer -= 1; // Reset the timer, keeping any excess time
 
+        // if (globalGameTimeSeconds % (10 - Math.floor(5 * getDifficulty())) === 0) {
         if (globalGameTimeSeconds % (10 - Math.floor(5 * getDifficulty())) === 0) {
           console.log(globalGameTimeSeconds, 10 - Math.floor(5 * getDifficulty()), "spawning enemy");
           spawnEnemy();
