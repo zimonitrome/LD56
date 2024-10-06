@@ -5,73 +5,183 @@ interface Score {
   score: number;
   timestamp: string;
 }
+const [scores, setScores] = createSignal<Score[]>([]);
+const [loading, setLoading] = createSignal(true);
+const [error, setError] = createSignal<string | null>(null);
+
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1y1-C_hKXzPTLQC4fDhsamvQC3xBRIXhR7czqJkNaWX0/gviz/tq?tqx=out:csv&sheet=scores';
+
+export const fetchScores = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await fetch(SHEET_URL);
+    if (!response.ok) {
+      throw new Error('Failed to fetch scores');
+    }
+    const csvText = await response.text();
+    const parsedScores = parseCSV(csvText);
+    setScores(parsedScores);
+  } catch (err) {
+    setError('Failed to load high scores. Please try again later.');
+    console.error('Error fetching scores:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const parseCSV = (csv: string): Score[] => {
+  const lines = csv.split('\n');
+  // Assuming the first line is the header, we skip it
+  return lines.slice(1).map(line => {
+    const [name, score, timestamp] = line.split(',');
+    return {
+      name,
+      score: parseInt(score, 10),
+      timestamp
+    };
+  }).filter(score => score.name && !isNaN(score.score))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10); // Get top 10 scores
+};
 
 const HighScoreList = () => {
-  const [scores, setScores] = createSignal<Score[]>([]);
-  const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
+  // Dummy data for testing
+  const dummyScores: Score[] = [
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+    { name: 'Alice', score: 1200, timestamp: '2023-10-01T12:00:00Z' },
+    { name: 'Bob', score: 1100, timestamp: '2023-10-02T12:00:00Z' },
+    { name: 'Charlie', score: 1000, timestamp: '2023-10-03T12:00:00Z' },
+    { name: 'David', score: 900, timestamp: '2023-10-04T12:00:00Z' },
+    { name: 'Eve', score: 800, timestamp: '2023-10-05T12:00:00Z' },
+    { name: 'Frank', score: 700, timestamp: '2023-10-06T12:00:00Z' },
+    { name: 'Grace', score: 600, timestamp: '2023-10-07T12:00:00Z' },
+    { name: 'Heidi', score: 500, timestamp: '2023-10-08T12:00:00Z' },
+    { name: 'Ivan', score: 400, timestamp: '2023-10-09T12:00:00Z' },
+    { name: 'Judy', score: 300, timestamp: '2023-10-10T12:00:00Z' },
+  ];
 
-  // Replace with your Google Sheets published CSV URL
-  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1y1-C_hKXzPTLQC4fDhsamvQC3xBRIXhR7czqJkNaWX0/gviz/tq?tqx=out:csv&sheet=scores';
+  // setScores(dummyScores);
+  // setLoading(false);
 
-  const fetchScores = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(SHEET_URL);
-      if (!response.ok) {
-        throw new Error('Failed to fetch scores');
-      }
-      const csvText = await response.text();
-      const parsedScores = parseCSV(csvText);
-      setScores(parsedScores);
-    } catch (err) {
-      setError('Failed to load high scores. Please try again later.');
-      console.error('Error fetching scores:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const parseCSV = (csv: string): Score[] => {
-    const lines = csv.split('\n');
-    // Assuming the first line is the header, we skip it
-    return lines.slice(1).map(line => {
-      const [name, score, timestamp] = line.split(',');
-      return {
-        name,
-        score: parseInt(score, 10),
-        timestamp
-      };
-    }).filter(score => score.name && !isNaN(score.score))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10); // Get top 10 scores
-  };
 
   createEffect(() => {
     fetchScores();
   });
 
   return (
-    <div>
+    <>
       <h2>High Scores</h2>
-      {loading() ? (
-        <p>Loading high scores...</p>
-      ) : error() ? (
-        <p style="color: red">{error()}</p>
-      ) : (
-        <ul>
-          <For each={scores()}>
-            {(score, index) => (
-              <li>
-                {index() + 1}. {score.name} - {score.score} (
-                {new Date(score.timestamp).toLocaleDateString()})
-              </li>
-            )}
-          </For>
-        </ul>
-      )}
-    </div>
+      <div style={{
+        "overflow-y": 'auto',
+        width: "calc(100% - 6rem)",
+        flex: "1 1 auto",
+        "text-align": "center",
+      }}>
+        {loading() ? (
+          <p>Loading high scores...</p>
+        ) : error() ? (
+          <p style="color: red">{error()}</p>
+        ) : (
+          <table style={{ width: "100%" }}>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={scores()}>
+                {(score, index) => (
+                  <tr>
+                    <td>{index() + 1}</td>
+                    <td style={{
+                      "white-space": "nowrap",
+                      "overflow": "hidden",
+                      "text-overflow": "ellipsis",
+                      "max-width": "16ch"
+                    }}>{score.name}</td>
+                    <td>{score.score}</td>
+                    <td>{new Date(score.timestamp).toISOString().split('T')[0]}</td>
+                  </tr>
+                )}
+            </For>
+          </tbody>
+          </table>
+        )}
+    </div >
+    </>
   );
 };
 

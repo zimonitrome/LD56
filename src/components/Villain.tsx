@@ -3,6 +3,7 @@ import { Player } from './Player';
 import asciiSprite from "../sprites/villain.md";
 import { Bullet } from './Bullet';
 import { DEBUG } from '../Game';
+import { audioManager } from '../utils/AudioManager';
 
 export class Enemy {
   x: number;
@@ -47,6 +48,7 @@ export class Enemy {
     const spawnY = this.y - bbox.height / 2 + charHeight / 2;
 
     const bullet = new Bullet(spawnX, spawnY, player);
+    audioManager.playSoundEffect('enemyShoot');
   }
 
   update(player: Player) {
@@ -106,12 +108,7 @@ export class Enemy {
       this.ref.style.transform = `scaleX(${this.lastDirection})`;
     }
 
-    this.divRef!.style.left = `${this.x}px`;
-    this.divRef!.style.top = `${this.y}px`;
-
-    if (this.ref) {
-      this.ref.innerHTML = this.sprite.render(this.state);
-    }
+    this.sprite.render(this.state, this.ref, this.divRef, this.x, this.y);
   }
 
   render() {
@@ -120,9 +117,6 @@ export class Enemy {
         ref={this.divRef}
         style={{
           position: 'absolute',
-          left: `${this.x}px`,
-          top: `${this.y}px`,
-          transform: `translate(-50%, -50%)`,
           border: DEBUG ? '1px solid red' : 'none',
         }}>
         <pre

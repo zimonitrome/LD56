@@ -6,10 +6,14 @@ import { Enemy } from './components/Villain';
 import heartSprite from "../src/sprites/heart.md"
 import { Sprite } from './components/Sprite';
 import { createBox } from './utils/create_ui_box';
-import HighScoreList from './components/HighscoreList';
+import HighScoreList, { fetchScores } from './components/HighscoreList';
+import './Game.css';
+import { audioManager } from './utils/AudioManager';
+import backgroundMusic from './audio/background-music.mp3';
+import AudioControls from './components/audioControl';
 
 export const DEBUG = false;
-export const SCREENSHAKE = false;
+export const SCREENSHAKE = true;
 
 const WorldTile = (props: { x: number; y: number; size: number; color: string }) => (
   <div
@@ -24,33 +28,85 @@ const WorldTile = (props: { x: number; y: number; size: number; color: string })
   />
 );
 
-export const [gameState, setGameState] = createStore({
-  // player: new Player(0, 0, 1, 'red', 7),
+const postScore = async () => {
+  setScoreSubmitted("loading");
+  const playerName = (document.getElementById('playerName') as HTMLInputElement).value;
+  const data = {
+    name: playerName,
+    score: gameState.score,
+  };
+
+  fetch('https://script.google.com/macros/s/AKfycbwZ1tT3EAPZgnxp1M91a5cv1AZAHCZYdC_Lym3-D9Gq6Ff5S8Xni8VKDyiLIxq2s-dIBg/exec', {
+    redirect: "follow",
+    method: 'POST',
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8",
+      "origin": "https://script.google.com"
+    },
+    body: JSON.stringify(data)
+  }).then(response => {
+    console.log(response);
+    setScoreSubmitted(true);
+    fetchScores();
+  });
+
+}
+
+const newGameStore = () => ({
   player: new Player(window.innerWidth / 2, window.innerHeight / 2, 1, 'red', 7),
   enemies: [] as Enemy[],
   tiles: [] as { x: number; y: number; size: number }[],
   health: 3,
   active: true,
+  score: 0,
+});
+
+export const [gameState, setGameState] = createStore(newGameStore());
+const [scoreSubmitted, setScoreSubmitted] = createSignal<boolean | "loading">(false);
+export const [volumes, setVolumes] = createStore({
+  backgroundMusic: 0.7,
+  soundEffects: 0.7,
 });
 
 const Game = () => {
   let worldRef: HTMLDivElement = undefined as any;
 
   const [windowSize, setWindowSize] = createSignal({ width: window.innerWidth, height: window.innerHeight });
+  const [gameStarted, setGameStarted] = createSignal(false);
+
   const updateSize = () => {
     setWindowSize({ width: window.innerWidth, height: window.innerHeight });
   };
+
   createEffect(() => {
     window.addEventListener('resize', updateSize);
     onCleanup(() => window.removeEventListener('resize', updateSize));
+  });
+
+  createEffect(() => {
+    audioManager.loadAllSounds();
+  });
+
+  createEffect(() => {
+    audioManager.setBackgroundMusicVolume(volumes.backgroundMusic);
+    audioManager.setSoundEffectsVolume(volumes.soundEffects);
+  });
+
+  createEffect(() => {
+    if (gameState.active && gameStarted()) {
+      audioManager.playBackgroundMusic();
+    }
+    else {
+      audioManager.stopBackgroundMusic();
+    }
   });
 
   const generateTiles = () => {
     const newTiles = [];
     for (let i = 0; i < 1000; i++) {
       newTiles.push({
-        x: (Math.random() - 0.5) * 100,
-        y: (Math.random() - 0.5) * 100,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
         size: Math.random() * 2 + 0.5,
       });
     }
@@ -69,13 +125,15 @@ const Game = () => {
 
   createEffect(() => {
     generateTiles();
-    spawnEnemy(); // Spawn an initial enemy
   });
 
 
   // Main game loop
   createEffect(() => {
-    const intervalId = setInterval(() => {
+    if (!gameStarted()) return;
+
+    gameState.active;
+    const gameLoopIntervalId = setInterval(() => {
       gameState.player.update();
 
       // Update enemies
@@ -86,43 +144,41 @@ const Game = () => {
       if (worldRef !== undefined) {
         worldRef.style.transform = `translate(${-gameState.player.x}px, ${-gameState.player.y}px)`;
       }
+
+      if (gameState.health <= 0 && gameState.player.graceCooldown <= 0) {
+        setGameState('active', false);
+        clearInterval(gameLoopIntervalId);
+        clearInterval(enemySpawnIntervalId);
+      }
     }, 1000 / 60); // 60 FPS
 
-    if (gameState.health <= 0) {
-      setGameState('active', false);
-      clearInterval(intervalId);
-    }
+    spawnEnemy();
 
-    onCleanup(() => clearInterval(intervalId));
-    return () => clearInterval(intervalId);
+    const enemySpawnIntervalId = setInterval(() => {
+      spawnEnemy();
+    }, 10000); // Spawn enemy every 10 seconds
+
+    onCleanup(() => {
+      clearInterval(gameLoopIntervalId);
+      clearInterval(enemySpawnIntervalId);
+    });
+
+    return () => {
+      clearInterval(gameLoopIntervalId);
+      clearInterval(enemySpawnIntervalId);
+    };
   });
 
-
+  const startGame = () => {
+    setGameStarted(true);
+    setGameState('active', true);
+    generateTiles();
+    audioManager.playBackgroundMusic();
+  };
 
   return (
-    <div id="game" style={{
-      position: 'relative',
-      width: '100vw',
-      height: '100vh',
-      overflow: 'hidden',
-      background: '#f0f0f0',
-      "font-family": "monospace",
-      "white-space": "pre",
-      "text-align": "left",
-      "font-size": "1rem",
-    }}>
-      <div
-        ref={worldRef}
-        id="world"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          width: '1rem',
-          height: '1rem',
-          "background-color": 'green',
-        }}
-      >
+    <div id="game">
+      <div ref={worldRef} id="world">
         <For each={gameState.tiles}>
           {(tile) => <WorldTile x={tile.x} y={tile.y} size={tile.size} color="rgba(100,100,200,0.2)" />}
         </For>
@@ -131,23 +187,26 @@ const Game = () => {
         </For>
         {gameState.player.render()}
       </div>
-      <div id="HUD" style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        // "background-color": 'rgba(0,0,0,0.5)',
-      }}>
-        <div style={{
-          position: 'absolute',
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          background: 'rgb(255, 255, 255)',
-          margin: 0
-        }}>
-          <Show when={!gameState.active || true}>
+      <div id="HUD">
+
+        <AudioControls />
+
+        <div id="gameOverScreen">
+          <Show when={!gameStarted()}>
+            <div id="welcomeScreen">
+              <pre style={{ margin: 0 }}>
+                {createBox(Math.floor(0.6 * windowSize().width / (0.56 * parseFloat(getComputedStyle(document.documentElement).fontSize))),
+                  Math.floor(0.6 * windowSize().height / (1.2 * parseFloat(getComputedStyle(document.documentElement).fontSize))))}
+              </pre>
+              <div id="welcome">
+                <h1>Welcome to the Game!</h1>
+                <p>Get ready for an exciting adventure!</p>
+                <button onClick={startGame}>Start Game</button>
+              </div>
+            </div>
+          </Show>
+
+          <Show when={!gameState.active && gameStarted()}>
             <pre style={{ margin: 0 }}>
               {
                 (() => {
@@ -164,56 +223,47 @@ const Game = () => {
                 })()
               }
             </pre>
-            <div style={{
-              margin: 0,
-              position: 'absolute',
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              display: 'flex',
-              "flex-direction": 'column',
-              "justify-content": 'center',
-              width: '100%',
-              height: '100%',
-              "align-items": 'center',
-            }}>
-              <pre>
+            <div id="gameOver">
+              <h1>
                 Game over!
-              </pre>
-              <pre>
-                <HighScoreList />
-              </pre>
-              <button>
-                Restart
-              </button>
-              <button onClick={() => {
-                const data = {
-                  name: "playa",
-                  score: 100
-                };
-                
-                fetch('https://script.google.com/macros/s/AKfycbwZ1tT3EAPZgnxp1M91a5cv1AZAHCZYdC_Lym3-D9Gq6Ff5S8Xni8VKDyiLIxq2s-dIBg/exec', {
-                  redirect: "follow",
-                  method: 'POST',
-                  headers: {
-                    "Content-Type": "text/plain;charset=utf-8",
-                    "origin": "https://script.google.com"
-                  },
-                  body: JSON.stringify(data)
-                }).then(response => {
-                  console.log(response);
-                });
-
+              </h1>
+              <h2>
+                Your score: {gameState.score}
+              </h2>
+              <HighScoreList />
+              <div style={{
+                display: 'flex',
+                "flex-direction": 'row',
+                gap: '1rem',
+                margin: '1rem',
               }}>
-                Submit score
-              </button>
+                <button onClick={() => {
+                  gameState.player.cleanup();
+                  for (const enemy of gameState.enemies) {
+                    enemy.cleanup();
+                  }
+                  setGameState(newGameStore());
+                  setScoreSubmitted(false);
+                  generateTiles();
+                }}>
+                  Restart
+                </button>
+                <Show when={!scoreSubmitted() || scoreSubmitted() === "loading"}>
+                  <input disabled={scoreSubmitted() == "loading"} type="text" placeholder="Enter your name" id="playerName" />
+                  <button
+                    disabled={scoreSubmitted() === "loading"}
+                    onClick={postScore}>
+                    Submit score
+                  </button>
+                </Show>
+              </div>
             </div>
           </Show>
         </div>
         <div style={{
-          position: 'absolute',
           bottom: 0,
           left: 0,
+          position: 'absolute',
           display: 'flex',
           "flex-direction": 'row',
           gap: '1rem',
@@ -221,15 +271,21 @@ const Game = () => {
         }}>
           <For each={Array.from({ length: gameState.health })}>
             {() => (
-              <pre
-                style={{
-                  "font-weight": "bold",
-                }}
-              >
+              <pre style={{ "font-weight": "bold", }}>
                 {new Sprite(heartSprite).render("main")}
               </pre>
             )}
           </For>
+        </div>
+        <div style={{
+          top: 0,
+          left: 0,
+          position: 'absolute',
+          "margin-left": '2rem',
+        }}>
+          <h2>
+            Score: {gameState.score}
+          </h2>
         </div>
       </div>
     </div>

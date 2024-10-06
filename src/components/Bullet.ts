@@ -58,10 +58,7 @@ export class Bullet {
     }
 
     private updatePosition() {
-        this.element.style.transform = `translate(calc(${this.x}px - 50%), calc(${this.y}px - 50%))`;
-        if (this.element) {
-            this.element.innerHTML = this.sprite.render("main");
-        }
+        this.sprite.render("main", this.element, this.element, this.x, this.y);
     }
 
     private update(directionX: number, directionY: number) {
@@ -99,7 +96,7 @@ export class Bullet {
 
     checkCollision(player: Player): boolean {
         const bulletRect = this.element.getBoundingClientRect();
-        
+
         if (!this.playerElement) {
             console.error('Player element not found');
             return false;

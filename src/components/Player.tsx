@@ -1,6 +1,7 @@
 import { Sprite } from './Sprite';
 import asciiSprite from "../sprites/Player.md";
 import { DEBUG, gameState, SCREENSHAKE, setGameState } from '../Game';
+import { audioManager } from '../utils/AudioManager';
 
 export class Player {
   x: number;
@@ -53,10 +54,12 @@ export class Player {
     let dx = 0;
     let dy = 0;
 
-    if (this.keys.has('w')) dy -= 1;
-    if (this.keys.has('s')) dy += 1;
-    if (this.keys.has('a')) dx -= 1;
-    if (this.keys.has('d')) dx += 1;
+    if (gameState.health > 0) {
+      if (this.keys.has('w')) dy -= 1;
+      if (this.keys.has('s')) dy += 1;
+      if (this.keys.has('a')) dx -= 1;
+      if (this.keys.has('d')) dx += 1;
+    }
 
     const anyInput: number = dx !== 0 || dy !== 0 ? 1 : 0;
 
@@ -90,13 +93,13 @@ export class Player {
     if (this.graceCooldown > 0) {
       this.graceCooldown -= 1;
       this.state = 'damage';
-      let oscillation = this.oscillatingDecay(30-this.graceCooldown);
-      let oscillation2 = this.oscillatingDecay(0.8*(30-this.graceCooldown));
-      this.ref!.style.rotate = `${2*oscillation}deg`;
+      let oscillation = this.oscillatingDecay(30 - this.graceCooldown);
+      let oscillation2 = this.oscillatingDecay(0.8 * (30 - this.graceCooldown));
+      this.ref!.style.rotate = `${2 * oscillation}deg`;
       this.world = document.getElementById('world');
       if (SCREENSHAKE) {
-        this.world!.style.left = `calc(50% + ${0.5*oscillation}px)`;
-        this.world!.style.top = `calc(50% + ${0.2*oscillation2}px)`;
+        this.world!.style.left = `calc(50% + ${0.5 * oscillation}px)`;
+        this.world!.style.top = `calc(50% + ${0.2 * oscillation2}px)`;
       }
     }
     else {
@@ -114,27 +117,13 @@ export class Player {
     this.lastDirection = dx === 0 ? this.lastDirection : dx;
     this.ref!.style.transform = `scaleX(${this.lastDirection})`;
 
-    this.ref!.innerHTML = this.sprite!.render(this.state);
-
-    const selfRect = this.divRef!.getBoundingClientRect();
-    this.divRef!.style.transform = `translate(${this.x - selfRect.width / 2}px, ${this.y - selfRect.height / 2}px)`;
-
-
-    const playerDiv = document.getElementById('player');
-    if (!playerDiv) return true; // If world div doesn't exist, consider bullet out of bounds
-    const playerRect = playerDiv.getBoundingClientRect();
-    const playerCenterX = playerRect.left + playerRect.width / 2;
-    const playerCenterY = playerRect.top + playerRect.height / 2;
-
-    const worldDiv = document.getElementById('world');
-    if (!worldDiv) return true; // If world div doesn't exist, consider bullet out of bounds
-    const worldRect = worldDiv.getBoundingClientRect();
-    const worldCenterX = worldRect.left + worldRect.width / 2;
-    const worldCenterY = worldRect.top + worldRect.height / 2;
+    this.sprite!.render(this.state, this.ref!, this.divRef!, this.x, this.y);
   }
 
   takeDamage() {
     if (this.graceCooldown > 0) return;
+
+    audioManager.playSoundEffect('playerHit');
     this.state = 'damage';
     this.graceCooldown = 30;
     setGameState('health', gameState.health - 1);

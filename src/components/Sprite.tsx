@@ -45,6 +45,7 @@ export class Sprite {
   private currentFrames: Record<SpriteState, number> = {};
   private lastUpdateTime: number = 0;
   private animationId: number | null = null;
+  private lastRenderedSprite: string = "";
 
   constructor(private content: string, private frameRate: number = 500) {
     this.loadSprites();
@@ -91,13 +92,26 @@ export class Sprite {
     }
   }
 
-  render(state: SpriteState): string {
+  render(state: SpriteState, innerElement?: HTMLElement, outerElement?: HTMLElement, x?: number, y?: number): string {
     const frames = this.sprites[state] || [];
     if (frames.length === 0) {
       return ':/';
     }
+
     const frameIndex = this.currentFrames[state] || 0;
     const frame = frames[frameIndex];
+
+    if (innerElement) {
+      if (this.lastRenderedSprite !== frame) {
+        innerElement.innerHTML = frame;
+        this.lastRenderedSprite = frame;
+      }
+    }
+
+    if (outerElement && typeof x === 'number' && typeof y === 'number') {
+        outerElement.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
+    }
+
     return frame;
   }
 
