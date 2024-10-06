@@ -286,6 +286,7 @@ const Game = () => {
                 <h1>(o o)</h1>
                 <p>Play with W, A, S, D to move around.</p>
                 <p>Avoid enemies, and have fun!</p>
+                <a href='https://github.com/zimonitrome/LD56'>View on Github!</a>
                 <button onClick={startGame}>Start Game</button>
               </div>
             </div>
@@ -315,6 +316,7 @@ const Game = () => {
               <h2>
                 Your score: {gameState.score}
               </h2>
+              <a href='https://github.com/zimonitrome/LD56'>View on Github!</a>
               <HighScoreList />
               <div style={{
                 display: 'flex',
