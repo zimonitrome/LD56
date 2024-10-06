@@ -1,5 +1,5 @@
 import { Sprite } from './Sprite';
-import asciiSprite from "../sprites/Player.md";
+import asciiSprite from "../sprites/player.md";
 import { DEBUG, gameState, SCREENSHAKE, setGameState } from '../Game';
 import { audioManager } from '../utils/AudioManager';
 
