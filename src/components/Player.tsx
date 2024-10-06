@@ -1,6 +1,6 @@
 import { Sprite } from './Sprite';
 import asciiSprite from "../sprites/player.md";
-import { DEBUG, gameState, SCREENSHAKE, setGameState } from '../Game';
+import { DEBUG, gameState, SCREENSHAKE, setGameState, worldSize } from '../Game';
 import { audioManager } from '../utils/AudioManager';
 
 export class Player {
@@ -85,8 +85,8 @@ export class Player {
     this.y += this.velocityY;
 
     // Constrain player within boundaries
-    this.x = Math.max(0, Math.min(gameState.worldSize, this.x));
-    this.y = Math.max(0, Math.min(gameState.worldSize, this.y));
+    this.x = Math.max(0, Math.min(worldSize, this.x));
+    this.y = Math.max(0, Math.min(worldSize, this.y));
 
     if (currentSpeed < 0.01) {
       this.velocityX = 0;
@@ -115,7 +115,6 @@ export class Player {
     }
 
     const newFrameRate = Math.max(Math.floor(5 * Math.exp(currentSpeed / 14)), 1);
-    // console.log("newFrameRate", newFrameRate);
     this.sprite?.setFrameRate(newFrameRate);
 
     this.lastDirection = dx === 0 ? this.lastDirection : dx;

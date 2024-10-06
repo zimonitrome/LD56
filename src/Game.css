@@ -1,10 +1,13 @@
+body * {
+    font-family: monospace;
+}
+
 #game {
     position: relative;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
     background: #a2a2bd;
-    font-family: monospace;
     white-space: pre;
     text-align: left;
     font-size: 1rem;
@@ -16,6 +19,7 @@
     top: 50%;
     background-color: #f0f0f0;
     overflow: hidden;
+    transform-origin: center;
 }
 
 #gameOver, #welcome {

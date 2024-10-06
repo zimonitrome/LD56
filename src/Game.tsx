@@ -14,8 +14,10 @@ import grassSpriteContent from "./sprites/grass.md";
 
 export const DEBUG = false;
 export const SCREENSHAKE = true;
-export const MUTE = true;
+export const MUTE = false;
 export const START_WORLD_SIZE = 1500;
+
+export let worldSize = START_WORLD_SIZE;
 
 const grassSprite = new Sprite(grassSpriteContent);
 
@@ -68,7 +70,6 @@ const newGameStore = () => ({
   health: 3,
   active: true,
   score: 0,
-  worldSize: START_WORLD_SIZE,
   currentTime: 0,
   deltaTime: 0
 });
@@ -120,8 +121,8 @@ const Game = () => {
   const generateTiles = () => {
     const newTiles = [];
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const width = Math.floor(gameState.worldSize / rem);
-    const height = Math.floor(gameState.worldSize / rem);
+    const width = Math.floor(START_WORLD_SIZE / rem);
+    const height = Math.floor(START_WORLD_SIZE / rem);
 
     for (let i = 0; i < 100; i++) {
       newTiles.push({
@@ -130,7 +131,7 @@ const Game = () => {
         sprite: 1 + Math.floor(Math.random() * grassSprite.nFrames)
       });
     }
-    setGameState('tiles', newTiles);
+    return newTiles;
   };
 
   const spawnEnemy = () => {
@@ -139,20 +140,20 @@ const Game = () => {
 
     switch (side) {
       case 0: // top
-        x = Math.random() * gameState.worldSize;
+        x = Math.random() * worldSize;
         y = 0;
         break;
       case 1: // right
-        x = gameState.worldSize;
-        y = Math.random() * gameState.worldSize;
+        x = worldSize;
+        y = Math.random() * worldSize;
         break;
       case 2: // bottom
-        x = Math.random() * gameState.worldSize;
-        y = gameState.worldSize;
+        x = Math.random() * worldSize;
+        y = worldSize;
         break;
       case 3: // left
         x = 0;
-        y = Math.random() * gameState.worldSize;
+        y = Math.random() * worldSize;
         break;
     }
 
@@ -164,25 +165,18 @@ const Game = () => {
     setGameState('enemies', (enemies) => enemies.filter((e) => e !== enemy));
   };
 
-  createEffect(() => {
-    generateTiles();
-  });
-
-  createEffect(() => {
-    if (worldRef !== undefined) {
-      worldRef.style.width = `${gameState.worldSize}px`;
-      worldRef.style.height = `${gameState.worldSize}px`;
-    }
-  });
-
   // Main game loop
   createEffect(() => {
     if (!gameStarted()) return;
 
+    setGameState("tiles", generateTiles());
+
     let lastTime = performance.now();
     let scoreTimer = 0;
 
+    gameState.active; // Important! We need to react to this.
     const gameLoopIntervalId = setInterval(() => {
+      // console.log("a");
       const currentTime = performance.now();
       const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
       lastTime = currentTime;
@@ -211,8 +205,12 @@ const Game = () => {
         clearInterval(enemySpawnIntervalId);
       }
 
-      // gameState.worldSize -= deltaTime * 1000;
-      setGameState("worldSize", ws => ws - deltaTime * 10);
+      worldSize -= deltaTime * 10;
+
+      if (worldRef !== undefined) {
+        worldRef.style.width = `${worldSize}px`;
+        worldRef.style.height = `${worldSize}px`;
+      }
 
     }, 1000 / 60); // 60 FPS
 
@@ -220,7 +218,7 @@ const Game = () => {
 
     const enemySpawnIntervalId = setInterval(() => {
       spawnEnemy();
-    }, 10000); // Spawn enemy every 10 seconds
+    }, 10000);
 
     onCleanup(() => {
       clearInterval(gameLoopIntervalId);
@@ -309,7 +307,6 @@ const Game = () => {
                   }
                   setGameState(newGameStore());
                   setScoreSubmitted(false);
-                  generateTiles();
                 }}>
                   Restart
                 </button>

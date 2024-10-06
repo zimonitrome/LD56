@@ -75,8 +75,6 @@ export class Enemy {
 
   update(player: Player, deltaTime: number) {
     this.chooseBehavior(); // Potentially change behavior each frame
-    console.log(this.currentBehavior);
-
     if (this.behaviorTimer > 0) {
       this.behaviorTimer -= deltaTime;
     } else {
@@ -115,6 +113,8 @@ export class Enemy {
     }
 
     if (distance <= this.wantedDistance) {
+      normalizedDx = 0;
+      normalizedDy = 0;
       if (this.cooldown <= 0) {
         this.shoot(player);
         this.cooldown = 100; // Set cooldown period
@@ -136,8 +136,10 @@ export class Enemy {
     this.velocityY *= this.friction;
 
     // Update position
-    this.x += this.velocityX;
-    this.y += this.velocityY;
+    if (this.cooldown <= 0) {
+      this.x += this.velocityX;
+      this.y += this.velocityY;
+    }
 
     if (currentSpeed < 0.01) {
       this.velocityX = 0;
@@ -148,7 +150,7 @@ export class Enemy {
     if (this.cooldown > 80)
       this.state = 'shooting';
     else if (normalizedDx !== 0 || normalizedDy !== 0)
-    this.state = 'walking';
+      this.state = 'walking';
     else
       this.state = 'idle';
 
