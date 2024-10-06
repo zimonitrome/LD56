@@ -157,7 +157,9 @@ const Game = () => {
         break;
     }
 
-    const enemy = new Enemy(x!, y!);
+    const isMega = Math.random() < 0.1;
+
+    const enemy = new Enemy(x!, y!, isMega);
     setGameState('enemies', (enemies) => [...enemies, enemy]);
   };
 
@@ -205,7 +207,7 @@ const Game = () => {
         clearInterval(enemySpawnIntervalId);
       }
 
-      worldSize -= deltaTime * 10;
+      worldSize -= deltaTime;
 
       if (worldRef !== undefined) {
         worldRef.style.width = `${worldSize}px`;
@@ -307,6 +309,7 @@ const Game = () => {
                   }
                   setGameState(newGameStore());
                   setScoreSubmitted(false);
+                  worldSize = START_WORLD_SIZE;
                 }}>
                   Restart
                 </button>

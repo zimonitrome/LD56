@@ -2,7 +2,7 @@ import { Sprite } from './Sprite';
 import { Player } from './Player';
 import asciiSprite from "../sprites/villain.md";
 import { Bullet } from './Bullet';
-import { DEBUG } from '../Game';
+import { DEBUG, gameState, setGameState } from '../Game';
 import { audioManager } from '../utils/AudioManager';
 
 export class Enemy {
@@ -23,6 +23,8 @@ export class Enemy {
   lastDirection: number = 1;
   cooldown: number = 0;
   wantedDistance: number = 200;
+  isMega: boolean = false;
+  cooldownPeriod: number = 100;
   
   // New properties for occasional random behaviors
   private behaviorTimer: number = 0;
@@ -30,10 +32,20 @@ export class Enemy {
   private randomDirection: { x: number, y: number } = { x: 0, y: 0 };
   private behaviorChangeProbability: number = 0.01; // 1% chance per frame to change behavior
 
-  constructor(x: number, y: number) {
+  constructor(x: number, y: number, isMega: boolean = true) {
     this.x = x;
     this.y = y;
     this.friction = 0.9;
+    this.isMega = isMega;
+    if (this.isMega) {
+      this.size = 2;
+      this.speed = 1.2;
+      this.maxVelocity = this.speed;
+      this.acceleration = this.speed / 10;
+      this.wantedDistance = 400;
+      this.behaviorChangeProbability = 0.005;
+      this.cooldownPeriod = 20;
+    }
 
     this.sprite = new Sprite(asciiSprite);
     this.sprite.setFrameRate(5);
@@ -71,6 +83,8 @@ export class Enemy {
 
     const bullet = new Bullet(spawnX, spawnY, player);
     audioManager.playSoundEffect('enemyShoot');
+
+    setGameState("score", s => s + 1);
   }
 
   update(player: Player, deltaTime: number) {
@@ -117,7 +131,7 @@ export class Enemy {
       normalizedDy = 0;
       if (this.cooldown <= 0) {
         this.shoot(player);
-        this.cooldown = 100; // Set cooldown period
+        this.cooldown = this.cooldownPeriod; // Set cooldown period
       }
     }
     this.cooldown -= 1;
@@ -147,7 +161,7 @@ export class Enemy {
     }
 
     // Update state
-    if (this.cooldown > 80)
+    if (this.cooldown > (this.cooldownPeriod * 0.8))
       this.state = 'shooting';
     else if (normalizedDx !== 0 || normalizedDy !== 0)
       this.state = 'walking';
@@ -174,6 +188,8 @@ export class Enemy {
           ref={(el) => this.ref = el}
           style={{
             margin: 0,
+            "font-weight": this.isMega ? "bold" : "normal",
+            color: this.isMega ? "red" : "black",
           }}>
           {":)"}
         </pre>
