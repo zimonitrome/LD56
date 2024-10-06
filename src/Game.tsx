@@ -10,23 +10,27 @@ import HighScoreList, { fetchScores, setScoresLoading } from './components/Highs
 import './Game.css';
 import { audioManager } from './utils/AudioManager';
 import AudioControls from './components/audioControl';
-import { M } from 'vite/dist/node/types.d-aGj9QkWt';
+import grassSpriteContent from "./sprites/grass.md";
 
 export const DEBUG = false;
 export const SCREENSHAKE = true;
 export const MUTE = true;
+export const START_WORLD_SIZE = 1500;
 
-const WorldTile = (props: { x: number; y: number; size: number; color: string }) => (
+const grassSprite = new Sprite(grassSpriteContent);
+
+const WorldTile = (props: { x: number; y: number; spriteIndex: number; color: string }) => (
   <div
     style={{
       position: 'absolute',
       left: `${props.x}rem`,
       top: `${props.y}rem`,
-      width: `${props.size}rem`,
-      height: `${props.size}rem`,
-      background: props.color,
+      "font-weight": "bold",
+      color: "rgb(200,200,200)",
     }}
-  />
+  >
+    {grassSprite.render(props.spriteIndex.toString())}
+  </div>
 );
 
 const postScore = async () => {
@@ -58,12 +62,15 @@ const postScore = async () => {
 }
 
 const newGameStore = () => ({
-  player: new Player(window.innerWidth / 2, window.innerHeight / 2, 1, 'red', 7),
+  player: new Player(START_WORLD_SIZE / 2, START_WORLD_SIZE / 2, 1, 'red', 7),
   enemies: [] as Enemy[],
-  tiles: [] as { x: number; y: number; size: number }[],
-  health: 0,
+  tiles: [] as { x: number; y: number; sprite: number }[],
+  health: 3,
   active: true,
   score: 0,
+  worldSize: START_WORLD_SIZE,
+  currentTime: 0,
+  deltaTime: 0
 });
 
 export const [gameState, setGameState] = createStore(newGameStore());
@@ -98,6 +105,10 @@ const Game = () => {
   });
 
   createEffect(() => {
+    worldRef.style.visibility = gameStarted() ? 'visible' : 'hidden';
+  });
+
+  createEffect(() => {
     if (gameState.active && gameStarted()) {
       audioManager.playBackgroundMusic();
     }
@@ -108,19 +119,44 @@ const Game = () => {
 
   const generateTiles = () => {
     const newTiles = [];
-    for (let i = 0; i < 1000; i++) {
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const width = Math.floor(gameState.worldSize / rem);
+    const height = Math.floor(gameState.worldSize / rem);
+
+    for (let i = 0; i < 100; i++) {
       newTiles.push({
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 0.5,
+        x: Math.floor(Math.random() * width),
+        y: Math.floor(Math.random() * height),
+        sprite: 1 + Math.floor(Math.random() * grassSprite.nFrames)
       });
     }
     setGameState('tiles', newTiles);
   };
 
   const spawnEnemy = () => {
-    const enemy = new Enemy(Math.random() * 100 - 50, Math.random() * 100 - 50);
+    let x, y;
+    const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
 
+    switch (side) {
+      case 0: // top
+        x = Math.random() * gameState.worldSize;
+        y = 0;
+        break;
+      case 1: // right
+        x = gameState.worldSize;
+        y = Math.random() * gameState.worldSize;
+        break;
+      case 2: // bottom
+        x = Math.random() * gameState.worldSize;
+        y = gameState.worldSize;
+        break;
+      case 3: // left
+        x = 0;
+        y = Math.random() * gameState.worldSize;
+        break;
+    }
+
+    const enemy = new Enemy(x!, y!);
     setGameState('enemies', (enemies) => [...enemies, enemy]);
   };
 
@@ -132,19 +168,38 @@ const Game = () => {
     generateTiles();
   });
 
+  createEffect(() => {
+    if (worldRef !== undefined) {
+      worldRef.style.width = `${gameState.worldSize}px`;
+      worldRef.style.height = `${gameState.worldSize}px`;
+    }
+  });
 
   // Main game loop
   createEffect(() => {
     if (!gameStarted()) return;
 
-    gameState.active;
+    let lastTime = performance.now();
+    let scoreTimer = 0;
+
     const gameLoopIntervalId = setInterval(() => {
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+      lastTime = currentTime;
+
       gameState.player.update();
 
       // Update enemies
       gameState.enemies.forEach((enemy) => {
-        enemy.update(gameState.player);
+        enemy.update(gameState.player, deltaTime);
       });
+
+      // Increment score every second
+      scoreTimer += deltaTime;
+      if (scoreTimer >= 1) {
+        setGameState('score', score => score + 1);
+        scoreTimer -= 1; // Reset the timer, keeping any excess time
+      }
 
       if (worldRef !== undefined) {
         worldRef.style.transform = `translate(${-gameState.player.x}px, ${-gameState.player.y}px)`;
@@ -155,6 +210,10 @@ const Game = () => {
         clearInterval(gameLoopIntervalId);
         clearInterval(enemySpawnIntervalId);
       }
+
+      // gameState.worldSize -= deltaTime * 1000;
+      setGameState("worldSize", ws => ws - deltaTime * 10);
+
     }, 1000 / 60); // 60 FPS
 
     spawnEnemy();
@@ -185,7 +244,7 @@ const Game = () => {
     <div id="game">
       <div ref={worldRef} id="world">
         <For each={gameState.tiles}>
-          {(tile) => <WorldTile x={tile.x} y={tile.y} size={tile.size} color="rgba(100,100,200,0.2)" />}
+          {(tile) => <WorldTile x={tile.x} y={tile.y} spriteIndex={tile.sprite} color="rgba(100,100,200,0.2)" />}
         </For>
         <For each={gameState.enemies}>
           {(enemy) => enemy.render()}
@@ -204,8 +263,9 @@ const Game = () => {
                   Math.floor(0.6 * windowSize().height / (1.2 * parseFloat(getComputedStyle(document.documentElement).fontSize))))}
               </pre>
               <div id="welcome">
-                <h1>Welcome to the Game!</h1>
-                <p>Get ready for an exciting adventure!</p>
+                <h1>(o o)</h1>
+                <p>Play with W, A, S, D to move around.</p>
+                <p>Avoid enemies, and have fun!</p>
                 <button onClick={startGame}>Start Game</button>
               </div>
             </div>

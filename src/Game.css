@@ -3,7 +3,7 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: #f0f0f0;
+    background: #a2a2bd;
     font-family: monospace;
     white-space: pre;
     text-align: left;
@@ -14,9 +14,8 @@
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 1rem;
-    height: 1rem;
-    background-color: green;
+    background-color: #f0f0f0;
+    overflow: hidden;
 }
 
 #gameOver, #welcome {

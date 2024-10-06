@@ -46,6 +46,7 @@ export class Sprite {
   private lastUpdateTime: number = 0;
   private animationId: number | null = null;
   private lastRenderedSprite: string = "";
+  nFrames: number = 0;
 
   constructor(private content: string, private frameRate: number = 500) {
     this.loadSprites();
@@ -54,6 +55,7 @@ export class Sprite {
   async loadSprites() {
     try {
       this.sprites = parseSprites(this.content);
+      this.nFrames = Object.values(this.sprites).reduce((total, frames) => total + frames.length, 0);
       this.initializeCurrentFrames();
       this.startAnimation();
     } catch (error) {

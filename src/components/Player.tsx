@@ -84,6 +84,10 @@ export class Player {
     this.x += this.velocityX;
     this.y += this.velocityY;
 
+    // Constrain player within boundaries
+    this.x = Math.max(0, Math.min(gameState.worldSize, this.x));
+    this.y = Math.max(0, Math.min(gameState.worldSize, this.y));
+
     if (currentSpeed < 0.01) {
       this.velocityX = 0;
       this.velocityY = 0;

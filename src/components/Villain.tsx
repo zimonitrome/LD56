@@ -23,6 +23,12 @@ export class Enemy {
   lastDirection: number = 1;
   cooldown: number = 0;
   wantedDistance: number = 200;
+  
+  // New properties for occasional random behaviors
+  private behaviorTimer: number = 0;
+  private currentBehavior: 'chase' | 'wait' | 'random' = 'chase';
+  private randomDirection: { x: number, y: number } = { x: 0, y: 0 };
+  private behaviorChangeProbability: number = 0.01; // 1% chance per frame to change behavior
 
   constructor(x: number, y: number) {
     this.x = x;
@@ -31,6 +37,22 @@ export class Enemy {
 
     this.sprite = new Sprite(asciiSprite);
     this.sprite.setFrameRate(5);
+  }
+
+  private chooseBehavior() {
+    if (Math.random() < this.behaviorChangeProbability) {
+      const behaviors = ['chase', 'wait', 'random'];
+      this.currentBehavior = behaviors[Math.floor(Math.random() * behaviors.length)] as 'chase' | 'wait' | 'random';
+      this.behaviorTimer = Math.random() * 1.5 + 0.5; // Random time between 0.5 and 2 seconds
+      
+      if (this.currentBehavior === 'random') {
+        const angle = Math.random() * 2 * Math.PI;
+        this.randomDirection = {
+          x: Math.cos(angle),
+          y: Math.sin(angle)
+        };
+      }
+    }
   }
 
   shoot(player: Player) {
@@ -51,18 +73,45 @@ export class Enemy {
     audioManager.playSoundEffect('enemyShoot');
   }
 
-  update(player: Player) {
+  update(player: Player, deltaTime: number) {
+    this.chooseBehavior(); // Potentially change behavior each frame
+    console.log(this.currentBehavior);
+
+    if (this.behaviorTimer > 0) {
+      this.behaviorTimer -= deltaTime;
+    } else {
+      this.currentBehavior = 'chase'; // Default back to chasing when timer expires
+    }
+
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    const normalizedDx = dx / distance;
-    const normalizedDy = dy / distance;
+    let normalizedDx = dx / distance;
+    let normalizedDy = dy / distance;
 
-    if (distance > this.wantedDistance) {
-      // Apply acceleration towards the player
-      this.velocityX += normalizedDx * this.acceleration;
-      this.velocityY += normalizedDy * this.acceleration;
+    switch (this.currentBehavior) {
+      case 'chase':
+        if (distance > this.wantedDistance) {
+          // Apply acceleration towards the player
+          this.velocityX += normalizedDx * this.acceleration;
+          this.velocityY += normalizedDy * this.acceleration;
+        }
+        break;
+      case 'wait':
+        // Gradually slow down
+        normalizedDx = 0;
+        normalizedDy = 0;
+        this.velocityX *= 0.9;
+        this.velocityY *= 0.9;
+        break;
+      case 'random':
+        // Move in the random direction
+        this.velocityX += this.randomDirection.x * this.acceleration;
+        this.velocityY += this.randomDirection.y * this.acceleration;
+        normalizedDx = this.randomDirection.x;
+        normalizedDy = this.randomDirection.y;
+        break;
     }
 
     if (distance <= this.wantedDistance) {
@@ -98,8 +147,8 @@ export class Enemy {
     // Update state
     if (this.cooldown > 80)
       this.state = 'shooting';
-    else if(distance > this.wantedDistance)
-      this.state = 'walking'
+    else if (normalizedDx !== 0 || normalizedDy !== 0)
+    this.state = 'walking';
     else
       this.state = 'idle';
 
