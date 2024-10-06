@@ -13,8 +13,8 @@ export class Enemy {
   speed: number = 1.4;
   velocityX: number = 0;
   velocityY: number = 0;
-  maxVelocity: number = this.speed;
-  acceleration: number = this.speed / 10;
+  maxVelocity: number;
+  acceleration: number;
   friction: number;
   private sprite: Sprite;
   state: string = 'idle';
@@ -23,29 +23,36 @@ export class Enemy {
   lastDirection: number = 1;
   cooldown: number = 0;
   wantedDistance: number = 200;
-  isMega: boolean = false;
+  type: "normal" | "red" | "blue" = "normal";
   cooldownPeriod: number = 100;
-  
+
   // New properties for occasional random behaviors
   private behaviorTimer: number = 0;
   private currentBehavior: 'chase' | 'wait' | 'random' = 'chase';
   private randomDirection: { x: number, y: number } = { x: 0, y: 0 };
-  private behaviorChangeProbability: number = 0.01; // 1% chance per frame to change behavior
+  private behaviorChangeProbability: number;
 
-  constructor(x: number, y: number, isMega: boolean = true) {
+  constructor(x: number, y: number, type: "normal" | "red" | "blue" = "normal", behaviorChangeProbability: number = 0.01, speed = 1.4) {
     this.x = x;
     this.y = y;
     this.friction = 0.9;
-    this.isMega = isMega;
-    if (this.isMega) {
+    this.type = type;
+    this.behaviorChangeProbability = behaviorChangeProbability;
+    this.speed = speed;
+    if (this.type === "red") {
       this.size = 2;
-      this.speed = 1.2;
-      this.maxVelocity = this.speed;
-      this.acceleration = this.speed / 10;
+      this.speed = 1.8;
       this.wantedDistance = 400;
       this.behaviorChangeProbability = 0.005;
       this.cooldownPeriod = 20;
     }
+    if (this.type === "blue") {
+      this.wantedDistance = 400;
+      this.speed = 0.2;
+    }
+
+    this.maxVelocity = this.speed;
+    this.acceleration = this.speed / 10;
 
     this.sprite = new Sprite(asciiSprite);
     this.sprite.setFrameRate(5);
@@ -56,7 +63,7 @@ export class Enemy {
       const behaviors = ['chase', 'wait', 'random'];
       this.currentBehavior = behaviors[Math.floor(Math.random() * behaviors.length)] as 'chase' | 'wait' | 'random';
       this.behaviorTimer = Math.random() * 1.5 + 0.5; // Random time between 0.5 and 2 seconds
-      
+
       if (this.currentBehavior === 'random') {
         const angle = Math.random() * 2 * Math.PI;
         this.randomDirection = {
@@ -69,7 +76,7 @@ export class Enemy {
 
   shoot(player: Player) {
     if (!this.divRef || !this.ref) return; // Safety check
-    
+
     const bbox = this.ref.getBoundingClientRect();
 
     const style = window.getComputedStyle(this.ref);
@@ -81,7 +88,29 @@ export class Enemy {
     const spawnX = this.x + this.lastDirection * (bbox.width / 2 + charWidth / 2);
     const spawnY = this.y - bbox.height / 2 + charHeight / 2;
 
-    const bullet = new Bullet(spawnX, spawnY, player);
+    if (this.type === "blue") {
+      // Shoot two bullets at once in a V towards the player.
+      // One bullet goes slightly to the left, the other slightly to the right
+      // from the perspective of the enemy.
+      const angle = Math.atan2(player.y - spawnY, player.x - spawnX);
+      const spread = Math.PI / 12; // 15 degrees spread
+
+      const leftBulletAngle = angle - spread;
+      const rightBulletAngle = angle + spread;
+
+      const leftBulletTargetX = spawnX + Math.cos(leftBulletAngle) * 1000; // Large number to ensure it goes off-screen
+      const leftBulletTargetY = spawnY + Math.sin(leftBulletAngle) * 1000;
+
+      const rightBulletTargetX = spawnX + Math.cos(rightBulletAngle) * 1000;
+      const rightBulletTargetY = spawnY + Math.sin(rightBulletAngle) * 1000;
+
+      const leftBullet = new Bullet(spawnX, spawnY, player, leftBulletTargetX, leftBulletTargetY);
+      const rightBullet = new Bullet(spawnX, spawnY, player, rightBulletTargetX, rightBulletTargetY);
+    } else {
+      // For non-blue enemies, shoot a single bullet directly at the player
+      const bullet = new Bullet(spawnX, spawnY, player, player.x, player.y);
+    }
+
     audioManager.playSoundEffect('enemyShoot');
 
     setGameState("score", s => s + 1);
@@ -127,8 +156,10 @@ export class Enemy {
     }
 
     if (distance <= this.wantedDistance) {
-      normalizedDx = 0;
-      normalizedDy = 0;
+      if (this.type !== "red") {
+        normalizedDx = 0;
+        normalizedDy = 0;
+      }
       if (this.cooldown <= 0) {
         this.shoot(player);
         this.cooldown = this.cooldownPeriod; // Set cooldown period
@@ -188,8 +219,12 @@ export class Enemy {
           ref={(el) => this.ref = el}
           style={{
             margin: 0,
-            "font-weight": this.isMega ? "bold" : "normal",
-            color: this.isMega ? "red" : "black",
+            "font-weight": this.type === "normal" ? "normal" : "bold",
+            color: {
+              "normal": "black",
+              "red": "red",
+              "blue": "blue"
+            }[this.type],
           }}>
           {":)"}
         </pre>

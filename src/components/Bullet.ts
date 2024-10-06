@@ -14,11 +14,9 @@ export class Bullet {
     player: Player;
     private playerElement: HTMLElement | null = null;
 
-    constructor(startX: number, startY: number, player: Player) {
+    constructor(startX: number, startY: number, player: Player, targetX: number, targetY: number) {
         this.player = player;
         this.playerElement = document.getElementById('player');
-        const targetX = player.x;
-        const targetY = player.y;
 
         this.x = startX;
         this.y = startY;

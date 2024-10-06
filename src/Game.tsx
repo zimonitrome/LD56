@@ -11,6 +11,7 @@ import './Game.css';
 import { audioManager } from './utils/AudioManager';
 import AudioControls from './components/audioControl';
 import grassSpriteContent from "./sprites/grass.md";
+import { time } from 'console';
 
 export const DEBUG = false;
 export const SCREENSHAKE = true;
@@ -70,15 +71,24 @@ const newGameStore = () => ({
   health: 3,
   active: true,
   score: 0,
-  currentTime: 0,
   deltaTime: 0
 });
+
+export let globalGameTimeSeconds = 0;
+
+function calculateDifficulty(time: number, k: number = 0.01): number {
+  return 1 - (1 / (1 + Math.exp(k * time) - 1));
+}
+
+const getDifficulty = () => {
+  return calculateDifficulty(globalGameTimeSeconds);
+}
 
 export const [gameState, setGameState] = createStore(newGameStore());
 const [scoreSubmitted, setScoreSubmitted] = createSignal<boolean | "loading">(false);
 export const [volumes, setVolumes] = createStore({
   backgroundMusic: MUTE ? 0 : 0.5,
-  soundEffects: MUTE ? 0 : 0.5,
+  soundEffects: MUTE ? 0 : 0.3,
 });
 
 const Game = () => {
@@ -157,9 +167,16 @@ const Game = () => {
         break;
     }
 
-    const isMega = Math.random() < 0.1;
+    const isSpecial = Math.random() < getDifficulty();
+    const type = isSpecial ? (Math.random() < 0.5 ? "red" : "blue") : "normal";
+    const behaviorChangeProbability = Math.random() < 0.2 ? 0.05 : 0.01;
 
-    const enemy = new Enemy(x!, y!, isMega);
+    let enemy;
+    if (!isSpecial) {
+      enemy = new Enemy(x!, y!, type, behaviorChangeProbability, 1.4 + 0.2 * (Math.random() - 0.5));
+    } else {
+      enemy = new Enemy(x!, y!, type, behaviorChangeProbability);
+    }
     setGameState('enemies', (enemies) => [...enemies, enemy]);
   };
 
@@ -170,15 +187,17 @@ const Game = () => {
   // Main game loop
   createEffect(() => {
     if (!gameStarted()) return;
+    console.log("start")
 
     setGameState("tiles", generateTiles());
 
     let lastTime = performance.now();
     let scoreTimer = 0;
+    globalGameTimeSeconds = 0;
 
     gameState.active; // Important! We need to react to this.
     const gameLoopIntervalId = setInterval(() => {
-      // console.log("a");
+      console.log(getDifficulty());
       const currentTime = performance.now();
       const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
       lastTime = currentTime;
@@ -194,7 +213,13 @@ const Game = () => {
       scoreTimer += deltaTime;
       if (scoreTimer >= 1) {
         setGameState('score', score => score + 1);
+        globalGameTimeSeconds += 1;
         scoreTimer -= 1; // Reset the timer, keeping any excess time
+
+        if (globalGameTimeSeconds % (10 - Math.floor(5 * getDifficulty())) === 0) {
+          console.log(globalGameTimeSeconds, 10 - Math.floor(5 * getDifficulty()), "spawning enemy");
+          spawnEnemy();
+        }
       }
 
       if (worldRef !== undefined) {
@@ -204,7 +229,6 @@ const Game = () => {
       if (gameState.health <= 0 && gameState.player.graceCooldown <= 0) {
         setGameState('active', false);
         clearInterval(gameLoopIntervalId);
-        clearInterval(enemySpawnIntervalId);
       }
 
       worldSize -= deltaTime;
@@ -218,18 +242,13 @@ const Game = () => {
 
     spawnEnemy();
 
-    const enemySpawnIntervalId = setInterval(() => {
-      spawnEnemy();
-    }, 10000);
 
     onCleanup(() => {
       clearInterval(gameLoopIntervalId);
-      clearInterval(enemySpawnIntervalId);
     });
 
     return () => {
       clearInterval(gameLoopIntervalId);
-      clearInterval(enemySpawnIntervalId);
     };
   });
 
