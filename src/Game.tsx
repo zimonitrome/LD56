@@ -187,7 +187,6 @@ const Game = () => {
   // Main game loop
   createEffect(() => {
     if (!gameStarted()) return;
-    console.log("start")
 
     setGameState("tiles", generateTiles());
 
@@ -197,7 +196,6 @@ const Game = () => {
 
     gameState.active; // Important! We need to react to this.
     const gameLoopIntervalId = setInterval(() => {
-      console.log(getDifficulty());
       const currentTime = performance.now();
       const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
       lastTime = currentTime;
@@ -218,7 +216,6 @@ const Game = () => {
 
         // if (globalGameTimeSeconds % (10 - Math.floor(5 * getDifficulty())) === 0) {
         if (globalGameTimeSeconds % (10 - Math.floor(5 * getDifficulty())) === 0) {
-          console.log(globalGameTimeSeconds, 10 - Math.floor(5 * getDifficulty()), "spawning enemy");
           spawnEnemy();
         }
       }
